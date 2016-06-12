@@ -1,0 +1,22 @@
+{
+  "name": "pahenrus/react-mysqli",
+  "description": "Asynchronous & non-blocking MySQL driver for React.PHP",
+  "license": "None",
+  "authors": [
+    {
+      "name": "Pavel Kozlov",
+      "email": "pavel@internet-ufa.ru"
+    }
+  ],
+  "require": {
+    "php": ">=5.4.0",
+    "ext-mysqlnd": "*",
+    "react/promise": "^2.2",
+    "react/event-loop": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "React\\MySQLi\\": "src/"
+    }
+  }
+}
