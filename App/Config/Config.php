@@ -5,8 +5,8 @@
  */
 $ip_list = array();//允许请求的白名单
 $http_cluster = array('localhost:1','192.168.2.228:2');//http服务器集群 host:weight
-define('DBDRIVER', 'FireBird');
-//define('DBDRIVER', 'MySQL_ASYNC');
+//define('DBDRIVER', 'FireBird');
+define('DBDRIVER', 'MySQL_ASYNC');
 define('GOLBALCACHE',false);
 define('MEMPREFIX','UTN_');
 

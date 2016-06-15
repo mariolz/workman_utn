@@ -115,9 +115,9 @@ from UTN_SALECLASS s
 inner join UTN_SALECLASSLEVEL l on s.NodeCode = l.NodeCode and s.ProductCode = l.ProductCode and s.SaleClassCode = l.SaleClassCode 
 inner join UTN_PRICE_SHOW p on l.Productcode = p.Productcode and l.Nodecode = p.Nodecode and l.PriceLevel = p.PriceLevel 
 where s.NodeCode = '".$node_code."' and s.ProductCode = '".$p_code."' and s.SortCode = '01' and p.Price <> 0 
-and (s.applytime <= cast('now' as timestamp) and s.endtime >= cast('now' as timestamp)) 
+and (s.applytime <= NOW()   and s.endtime >=NOW()  ) 
 order by s.SaleClassCode, l.PriceLevel";
-		return $res = $this->fetchAll($sql,array(),false,$cache);
+		return $res = $this->fetchAll($sql,array(),$this->_async,$cache);
 	}
 	function sectionGroupSeatPriceShow($node_code,$p_code,$cache) {
 		$sql = "select s.PRICELEVEL,count(*) as AMOUNT,e.PRICE from utn_section_show t 
@@ -133,6 +133,36 @@ group by s.pricelevel,e.PRICE";
 inner join utn_sectiongroup_show sg on se.productcode = sg.productcode 
 and se.nodecode = sg.nodecode and se.SWSC_SECTIONGROUPCODE = sg.sectiongroupcode 
 and sg.sectiongroupclass = 2 and se.nodecode = '".$node_code."' and sectioncode = '".$section_code."'";
-		return $res = $this->fetch($sql,array(),false,$cache);
+		return $res = $this->fetch($sql,array(),$this->_async,$cache);
+	}
+	function GetSalePolicy($node_code,$p_code,$cache=false) {
+		$sql = "Select s.SaleClassCode as SALECLASSCODE, s.CName as SALECLASSNAME, s.SortCode as SORTCODE, s.TicketNum as TICKETNUM, s.IsSuite as ISSUITE,s.ISPRINTED, l.PriceLevel as PRICELEVEL
+, p.Price as PRICE, l.TotalPrices as TOTALPRICES, l.GiftNum as GIFTNUM, l.Discount as DISCOUNT
+from UTN_SALECLASS s
+inner join UTN_SALECLASSLEVEL l on s.NodeCode = l.NodeCode and s.ProductCode = l.ProductCode and s.SaleClassCode = l.SaleClassCode
+inner join UTN_PRICE_SHOW p on l.Productcode = p.Productcode and l.Nodecode = p.Nodecode and l.PriceLevel = p.PriceLevel
+where s.NodeCode = '".$node_code."' and s.ProductCode = '".$p_code."' and s.SortCode = '01' and p.Price <> 0
+and (s.applytime <=  NOW()   and s.endtime >=  NOW()  )
+order by s.SaleClassCode, l.PriceLevel";
+		$res = $this->fetchAll($sql,array(),$this->_async,$cache);
+		print_r($res);
+		if(!empty($res)) {
+			foreach($res as $k=>$v) {
+				if(!is_null($v['TOTALPRICES']) && !empty($v['TOTALPRICES'])) {
+					$res[$k]['SALECLASSTYPE']  = 'T';
+					$res[$k]['SALECLASSVALUE'] = $v['TOTALPRICES'];
+				} else if(!is_null($v['GIFTNUM']) && !empty($v['GIFTNUM'])) {
+					$res[$k]['SALECLASSTYPE']  = 'G';
+					$res[$k]['SALECLASSVALUE'] = $v['GIFTNUM'];
+				} else if(!is_null($v['DISCOUNT']) && !empty($v['DISCOUNT'])) {
+					//var_dump(!is_null($v['DISCOUNT']) || !empty($v['DISCOUNT']));
+					$res[$k]['SALECLASSTYPE']  = 'D';
+					$res[$k]['SALECLASSVALUE'] = $v['DISCOUNT'];
+					//var_dump($res[$k]['SALECLASSTYPE']);
+				}
+			}
+		}
+		//print_r($res);
+		return $res;
 	}
 }

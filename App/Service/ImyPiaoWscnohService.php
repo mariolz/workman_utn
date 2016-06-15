@@ -111,16 +111,22 @@ class ImyPiaoWscnohService {
 		
 	}
 	function AvailablePrivilegeObj($fspp,$fsq) {
-        $res1 = $this->processGetBuyPopedom1($fspp);
+        $res1 = $this->DeleteRows($fspp);
         return $this->processGetBuyPopedom($fspp,$fsq);
 	}
-	function processGetBuyPopedom1(array $data) {
-		$result = array();
+	function DeleteRows(array $data) {
+		//$result = array();
+		$filter = array();
 		foreach($data as $k=>$v) {
-			if($v['OBJECTCODE'] == 'CTCOM' && $v['ISVALID'] == 'Y' && $v['OBJECTTYPE'] == 'L') {
+			if($v['OBJECTTYPE'] == 'M') {
+				$filter[] = $v['SALECLASSCODE'];
+			}
+		}
+		foreach($data as $k=>$v) {
+			if($v['OBJECTTYPE'] == 'M'|| ($v['OBJECTCODE'] == 'CTCOM' && $v['ISVALID'] == 'Y' && $v['OBJECTTYPE'] == 'L' && in_array($v['SALECLASSCODE'],$filter))) {
 				unset($v);
 			}
-			$result[$k]['OBJECTTYPE']        = $v['OBJECTTYPE'];
+			/*$result[$k]['OBJECTTYPE']        = $v['OBJECTTYPE'];
 			$result[$k]['OBJECTCODE']        = $v['OBJECTCODE'];
 			$result[$k]['GROUPCODE']         = $v['GROUPCODE'];
 			$result[$k]['SALECLASSCODE']     = $v['SALECLASSCODE'];
@@ -128,8 +134,10 @@ class ImyPiaoWscnohService {
 			$result[$k]['ISVALID']           = $v['ISVALID'];
 			if($result[$k]['OBJECTTYPE'] == 'M') {
 				unset($result[$k]);
-			}
+			}*/
 		}
+		unset($filter);
+		return $data;
 	}
 	function processGetBuyPopedom(array $data1,array $data2) {
 		$result       = array();
@@ -612,5 +620,209 @@ class ImyPiaoWscnohService {
 			$xml .='</SEATS></ROWDATA></UTN_ONLINESALETICKET_DATAPACKET>';
 		}
 		return $xml;
+	}
+	function GetSalePolicyByMinDiscount($node_code,$p_code,$seat_list) {
+		$seat_codes = $this->SortOutSeatByLevel($seat_list);
+		$policy     = $this->GetPolicy($node_code, $p_code);
+		$priv       = $this->GetPriv($node_code, $p_code);
+		$data2      = $this->GetData2($node_code, $p_code);
+		//print_r($data2);
+		$custom     = 'POSTTICKETPRICE_SORT';
+		$data1      = $this->GetData1($custom);
+		//print_r($data1);
+		return $this->processSalePolicy($seat_codes,$policy,$priv,$data2,$data1,$node_code,$p_code);
+	
+	}
+	function GetData1($custom) {
+		new Load('Model/'.DBDRIVER,'SysInfoShow');
+		$model = new SysInfoShow();
+		$cond = array('cond'=>array('CUSTOMMODULE'=>$custom));
+		return $model->GetInfoByCond('*',$cond);
+	}
+	function GetData2($node_code, $p_code) {
+		new Load('Model/'.DBDRIVER,'PriceShow');
+		$model = new PriceShow();
+		$cond = array('cond'=>array('NodeCode'=>$node_code,'ProductCode'=>$p_code),'split'=>' AND ');
+		return $model->GetAllInfoByCond('PRICELEVEL, PRICE',$cond);
+	}
+	function processSalePolicy($seat_code,$policy,$priv,$data2,$data1,$node_code,$p_code) {
+		//print_r($policy);
+		//print_r($priv);
+		$result = array();
+	    foreach($policy as $k=>$v) {
+	    	foreach($priv as $kk=>$vv) {
+	    		if($vv['GROUPCODE'] != S_MPWS_GROUPCODE && $vv['OBJECTCODE'] != S_MPWS_USERLEVEL && $vv['SALECLASSCODE'] != $v['SALECLASSCODE']) {
+	    			if($vv['OBJECTCODE'] != S_MPWS_USERLEVEL && $vv['OBJECTCODE'] != S_MPWS_USERLEVEL && $v['SALECLASSCODE']) {
+	    				unset($v);
+	    			}
+	    		} else if($vv['ISVALID'] == 'N') {
+	    			unset($v);
+	    		} else {
+	    			if($vv['SALECLASSCODE'] == $v['SALECLASSCODE']) {
+	    				$result[$v['SALECLASSCODE']][$k] = $v;
+	    			}
+	    		}
+	    	}
+	    }
+	    //print_r($result);
+	    $total_price = $this->IsPolicyValid($result,$seat_code,$data2,$data1);
+	    asort($total_price,SORT_NUMERIC);
+	    //print_r($total_price);
+	    $r_total = array();
+	    foreach($total_price as $k=>$v) {
+	    	$r_total[$k] = $v;
+	    	break; 
+	    }
+	    return $this->GetSalePolicyXml($r_total,$node_code,$p_code);
+	    //print_r($result);
+	    
+	    //return $result;
+	}
+	function GetSalePolicyXml($data,$node_code,$p_code) {
+		$key = array_keys($data);
+		$val = array_values($data);
+		$xml = '<?xml version="1.0" encoding="UTF-8"?>
+<UTN_ONLINESALETICKET_DATAPACKET>
+	<METADATA>
+		<BuyPopdoms>
+			<FIELDS>
+				<FIELD Name="NodeCode"/>
+				<FIELD Name="ProductCode"/>
+				<FIELD Name="SaleClassCode"/>
+				<FIELD Name="SaleClassName"/>
+				<FIELD Name="ReceivableTotalPrices"/>
+			</FIELDS>
+		</BuyPopdoms>
+	</METADATA>
+	<ROWDATA>
+		<BuyPopdoms>
+			<ROW NodeCode="'.$node_code.'" ProductCode="'.$p_code.'" SaleClassCode="'.$key[0].'" SaleClassName="普通票" ReceivableTotalPrices="'.$val[0].'"/>
+		</BuyPopdoms>
+	</ROWDATA>
+</UTN_ONLINESALETICKET_DATAPACKET>';
+		return $xml;
+	}
+	function IsPolicyValid($res,$lv_data,$data2,$data1) {
+		//print_r($res);
+		$fres   = array();
+		if(!empty($res)) {
+			foreach($res as $k=>$v) {
+				$fres[$k] = 0;
+				//var_dump($k);
+				foreach($v as $kk=>$vv) {
+					
+					if($vv['SALECLASSTYPE'] == 'T') {
+						if(!empty($lv_data)) {
+							$c = count($lv_data);
+							foreach($lv_data as $a=>$b) {
+								if($a!=$vv['PRICELEVEL'] || ($vv['TICKETNUM'] !=1 && $c % $vv['TICKETNUM']!=0)) {
+									break 2;
+								}
+							}
+						}
+					} else if($vv['SALECLASSTYPE'] == 'D') {
+						if(!empty($lv_data)) {
+							$c = count($lv_data);
+							foreach($lv_data as $a=>$b) {
+								if($a!=$vv['PRICELEVEL'] || ($vv['TICKETNUM'] !=1 && $c < intval($vv['TICKETNUM']))) {
+									break 2;
+								}
+							}
+						}
+					} else if($vv['SALECLASSTYPE'] == 'G') {
+						if(!empty($lv_data)) {
+							$c = count($lv_data);
+							
+							foreach($lv_data as $a=>$b) {
+								$rs = intval($vv['TICKETNUM'])+ intval($vv['SALECLASSVALUE']);
+								//var_dump($a!=$vv['PRICELEVEL'] || ($vv['TICKETNUM'] !=1 && $c % $rs));
+								if($a!=$vv['PRICELEVEL'] || ($vv['TICKETNUM'] !=1 && $c % $rs)) {
+									break 2;
+								}
+							}
+						}
+					}
+					//print_r($vv['SALECLASSTYPE']);
+					if($vv['SALECLASSTYPE'] == 'T') {
+						if(!empty($lv_data) && isset($lv_data[$vv['PRICELEVEL']]) ) {
+							$s_value   = $vv['SALECLASSVALUE'];
+							$n         = count($lv_data) / $vv['TICKETNUM'];
+							$fres[$k] += floatval($s_value) * $n;
+							//var_dump(floatval($s_value));
+						}
+					} else if($vv['SALECLASSTYPE'] == 'D') {
+						if(!empty($lv_data) && isset($lv_data[$vv['PRICELEVEL']]) ){
+							$s_value   = $vv['SALECLASSVALUE'];
+							$s_amount  = count($lv_data);
+							//$n         = $s_amount / (intval($vv['TICKETNUM'])+intval($s_value));
+							if(!empty($data2)) {
+								foreach($data2 as $a=>$b) {
+									if(isset($lv_data[$b['PRICELEVEL']])) {
+										$price = $b['PRICE'];
+										break 1;
+									}
+								}
+							}
+							$fres[$k] = $this->Selfroundto($s_value,$s_amount,$data1,$price);
+						}
+					} else if($vv['SALECLASSTYPE'] == 'G') {
+						
+						if(!empty($lv_data) && isset($lv_data[$vv['PRICELEVEL']]) ){
+							$s_value   = $vv['SALECLASSVALUE'];
+							$s_amount  = count($lv_data);
+							$n         = $s_amount / (intval($vv['TICKETNUM'])+intval($s_value));
+							if(!empty($data2)) {
+								foreach($data2 as $a=>$b) {
+									if(isset($lv_data[$b['PRICELEVEL']])) {
+										$price = $b['PRICE'];
+										break 1;
+									}
+								}
+							}
+							$fres[$k] += intval($vv['TICKETNUM'])*$price*$n;
+							//var_dump(intval($vv['TICKETNUM']),$price,$n);
+						}
+					}
+				}
+			}
+		}
+		return $fres;
+	} 
+	function Selfroundto($value,$count,$data1,$price) {
+		$result = $value/100*$price*$count;
+		if($data1['ISVALID'] == 1) {
+			$result = round($result);
+		} else if($data1['ISVALID'] == 2) {
+			$result = intval($result);
+		} else {
+			$result = round($result,2);
+		}
+		return $result;
+	}
+	function SortOutSeatByLevel($list) {
+		$result = array();
+		if(!empty($list)) {
+			$seats = explode('|', $list);
+			foreach($seats as $k=>$v) {
+				$res = explode('-', $v);
+				if(isset($res[1])) {
+					$result[$res[1]][] = $res[0];
+				}
+			}
+		}
+		return $result;
+	}
+	function GetPolicy($node_code,$p_code) {
+		new Load('Model/'.DBDRIVER,'JoinShow');
+		$model  = new JoinShow();
+		return $model->GetSalePolicy($node_code, $p_code);
+		
+	}
+	function GetPriv($node_code,$p_code) {
+		new Load('Model/'.DBDRIVER,'JoinShow');
+		$model  = new JoinShow();
+		$data   = $model->spp($node_code, $p_code);
+		//print_r($data);
+		return $this->DeleteRows($data);
 	}
 }

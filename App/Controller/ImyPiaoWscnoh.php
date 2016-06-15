@@ -214,4 +214,12 @@ class ImyPiaoWscnoh {
 		$res             = $this->_filter->filterXml($xml);
 		return json_encode(array($res),true);
 	}
+    function GetSalePolicyByMinDiscount() {
+    	$node_code       = $this->_filter->post('NodeCode');
+    	$p_code          = $this->_filter->post('ProductCode');
+    	$seat_list       = $this->_filter->post('SeatList');
+    	$xml             = $this->_service->GetSalePolicyByMinDiscount($node_code,$p_code,$seat_list);
+    	$res             = $this->_filter->filterXml($xml);
+    	return json_encode(array($res),true);
+    }
 }

@@ -97,7 +97,7 @@ class JoinShow extends \Db{
 		return $this->fetch($sql,array(),false,true);
 		//return $this->getServerInfo();
 	}
-	function spp($node_code,$p_code,$cache) {
+	function spp($node_code,$p_code,$cache=false) {
 		$sql = "Select p.ObjectType,p.OBJECTCODE, p.GROUPCODE, p.SALECLASSCODE, p.SALECLASSLEVEL, o.ISVALID 
 from UTN_SALECLASS_PRIVILEGE p inner join UTN_PRODUCT_OBJECT_SHOW o on p.NODECODE = o.NODECODE 
 and p.PRODUCTCODE = o.PRODUCTCODE and p.ObjectCode = o.ObjectCode and p.GroupCode = o.GroupCode 
@@ -116,7 +116,7 @@ inner join UTN_PRICE_SHOW p on l.Productcode = p.Productcode and l.Nodecode = p.
 where s.NodeCode = '".$node_code."' and s.ProductCode = '".$p_code."' and s.SortCode = '01' and p.Price <> 0 
 and (s.applytime <= cast('now' as timestamp) and s.endtime >= cast('now' as timestamp)) 
 order by s.SaleClassCode, l.PriceLevel";
-		return $res = $this->fetchAll($sql,array(),false,$cache);
+		return $res = $this->fetchAll($sql,array(),$this->_async,$cache);
 	}
 	function sectionGroupSeatPriceShow($node_code,$p_code,$cache) {
 		$sql = "select s.PRICELEVEL,count(*) as AMOUNT,e.PRICE from utn_section_show t 
@@ -125,13 +125,41 @@ left join utn_seat_show s on (t.nodecode=s.nodecode and t.mapcode=s.mapcode and 
 left join utn_price_show e on (t.nodecode=e.nodecode and t.productcode=e.productcode and s.pricelevel=e.pricelevel) 
 where  t.NodeCode = ".$node_code." and t.productcode='".$p_code."' and s.STATUS='F' and (KIND='W' or (t.SWSC_SECTIONGROUPCODE<>'' and KIND='N'))
 group by s.pricelevel,e.PRICE";
-		return $res = $this->fetchAll($sql,array(),false,$cache);
+		return $res = $this->fetchAll($sql,array(),$this->_async,$cache);
 	}
 	function SectionAndSectionGroupShow($node_code,$section_code,$cache = false) {
 		$sql = "select count(*) as RecordCount from utn_section_show se 
 inner join utn_sectiongroup_show sg on se.productcode = sg.productcode 
 and se.nodecode = sg.nodecode and se.SWSC_SECTIONGROUPCODE = sg.sectiongroupcode 
 and sg.sectiongroupclass = 2 and se.nodecode = '".$node_code."' and sectioncode = '".$section_code."'";
-		return $res = $this->fetch($sql,array(),false,$cache);
+		return $res = $this->fetch($sql,array(),$this->_async,$cache);
+	}
+	function GetSalePolicy($node_code,$p_code,$cache=false) {
+		$sql = "Select s.SaleClassCode, s.CName as SaleClassName, s.SortCode, s.TicketNum, s.IsSuite,s.ISPRINTED, l.PriceLevel
+, p.Price, l.TotalPrices, l.GiftNum, l.Discount 
+from UTN_SALECLASS s 
+inner join UTN_SALECLASSLEVEL l on s.NodeCode = l.NodeCode and s.ProductCode = l.ProductCode and s.SaleClassCode = l.SaleClassCode 
+inner join UTN_PRICE_SHOW p on l.Productcode = p.Productcode and l.Nodecode = p.Nodecode and l.PriceLevel = p.PriceLevel 
+where s.NodeCode = '".$node_code."' and s.ProductCode = '".$p_code."' and s.SortCode = '01' and p.Price <> 0 
+and (s.applytime <= cast('now' as timestamp) and s.endtime >= cast('now' as timestamp)) 
+order by s.SaleClassCode, l.PriceLevel";
+		$res = $this->fetchAll($sql,array(),$this->_async,$cache);
+		if(!empty($res)) {
+			foreach($res as $k=>$v) {
+				if(!is_null($v['TOTALPRICES']) && !empty($v['TOTALPRICES'])) {
+					$res[$k]['SALECLASSTYPE']  = 'T';
+					$res[$k]['SALECLASSVALUE'] = $v['TOTALPRICES'];
+				} else if(!is_null($v['GIFTNUM']) && !empty($v['GIFTNUM'])) {
+					$res[$k]['SALECLASSTYPE']  = 'G';
+					$res[$k]['SALECLASSVALUE'] = $v['GIFTNUM'];
+				} else if(!is_null($v['DISCOUNT']) && !empty($v['DISCOUNT'])) {
+					//var_dump(!is_null($v['DISCOUNT']) || !empty($v['DISCOUNT']));
+					$res[$k]['SALECLASSTYPE']  = 'D';
+					$res[$k]['SALECLASSVALUE'] = $v['DISCOUNT'];
+					//var_dump($res[$k]['SALECLASSTYPE']);
+				}
+			}
+		}
+		return $res;
 	}
 }
