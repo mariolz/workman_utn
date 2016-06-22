@@ -222,4 +222,38 @@ class ImyPiaoWscnoh {
     	$res             = $this->_filter->filterXml($xml);
     	return json_encode(array($res),true);
     }
+    /**
+     * @todo 明天把MYSQL的集成好
+     * @return string
+     */
+    function CreateOrderAndBooking4() {
+    	$node_code       = $this->_filter->post('NodeCode');
+    	$p_code          = $this->_filter->post('ProductCode');
+    	$s_code          = $this->_filter->post('SectionCode');
+    	$seatl_code      = $this->_filter->post('SeatList');
+    	$sale_code       = $this->_filter->post('SaleClassCode');
+    	$rec_total_code  = $this->_filter->post('ReceivableTotalPrices');
+    	$m_code          = $this->_filter->post('MemberID');
+    	$c_type          = $this->_filter->post('CustomerType');
+    	$c_name          = $this->_filter->post('CustomerName');
+    	$sex             = $this->_filter->post('Sex');
+    	$tel_code        = $this->_filter->post('Telephone');
+    	$ship_way        = $this->_filter->post('ShippingWay');
+    	$ship_addr       = $this->_filter->post('ShippingAddress');
+    	$id_type         = $this->_filter->post('IdentityType');
+    	$id_no           = $this->_filter->post('IdentityNo');
+    	$invo_head       = $this->_filter->post('InvoiceHead');
+    	$pay_code        = $this->_filter->post('PayModeCode');
+    	$cg_code         = $this->_filter->post('CreateGroup');
+    	$xml             = $this->_service->CreateOrderAndBooking4($node_code,$p_code,$s_code,$seatl_code,$sale_code,$rec_total_code,$m_code,$c_type,$c_name,$sex,$tel_code,$ship_way,$ship_addr,$id_type,$id_no,$invo_head,$pay_code,$cg_code);
+    	$res             = $this->_filter->filterXml($xml);
+    	return json_encode(array($res),true);
+    }
+    function Test() {
+    	//$str = $this->_filter->post('str');
+    	$str      = 'B0A';
+    	new Load('Lib/','Algorithm');
+    	$a        = new Algorithm();
+    	$a->GetDBCode('Common',$str);
+    }
 }

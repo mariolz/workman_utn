@@ -162,4 +162,45 @@ order by s.SaleClassCode, l.PriceLevel";
 		}
 		return $res;
 	}
+	function GetInfoA($node_code,$p_code,$sale_code,$cache=false) {
+		$sql = "Select s.SaleClassCode, s.CName as SaleClassName, 
+s.SortCode, s.TicketNum, s.IsSuite,s.ISPRINTED, l.PriceLevel, p.Price, 
+l.TotalPrices, l.GiftNum, l.Discount from UTN_SALECLASS s 
+inner join UTN_SALECLASSLEVEL l on s.NodeCode = l.NodeCode and 
+s.ProductCode = l.ProductCode and s.SaleClassCode = l.SaleClassCode 
+inner join UTN_PRICE_SHOW p on l.Productcode = p.Productcode and 
+l.Nodecode = p.Nodecode and l.PriceLevel = p.PriceLevel 
+where s.NodeCode = '".$node_code."' and s.ProductCode = '".$p_code."' and s.SortCode = '01' 
+and p.Price <> 0 AND s.SALECLASSCODE = '".$sale_code."'";
+		$res = $this->fetchAll($sql,array(),$this->_async,$cache);
+		//print_r($res);
+		if(!empty($res)) {
+			foreach($res as $k=>$v) {
+				if(!is_null($v['TOTALPRICES']) && !empty($v['TOTALPRICES'])) {
+					$res[$k]['SALECLASSTYPE']  = 'T';
+					$res[$k]['SALECLASSVALUE'] = $v['TOTALPRICES'];
+				} else if(!is_null($v['GIFTNUM']) && !empty($v['GIFTNUM'])) {
+					$res[$k]['SALECLASSTYPE']  = 'G';
+					$res[$k]['SALECLASSVALUE'] = $v['GIFTNUM'];
+				} else if(!is_null($v['DISCOUNT']) && !empty($v['DISCOUNT'])) {
+					$res[$k]['SALECLASSTYPE']  = 'D';
+					$res[$k]['SALECLASSVALUE'] = $v['DISCOUNT'];
+				}
+			}
+		}
+		return $res;
+	}
+	function GetData7InfoByCond($node_code,$p_code,$sale_code,$cache=false) {
+		$sql = "Select s.SaleClassCode, s.CName as SaleClassName, 
+s.SortCode, s.TicketNum, s.IsSuite,s.ISPRINTED, l.PriceLevel, p.Price, 
+l.TotalPrices, l.GiftNum, l.Discount from UTN_SALECLASS s 
+inner join UTN_SALECLASSLEVEL l on s.NodeCode = l.NodeCode and 
+s.ProductCode = l.ProductCode and s.SaleClassCode = l.SaleClassCode 
+inner join UTN_PRICE_SHOW p on l.Productcode = p.Productcode and 
+l.Nodecode = p.Nodecode and l.PriceLevel = p.PriceLevel 
+where s.NodeCode = '".$node_code."' and s.ProductCode = '".$p_code."' and s.SALECLASSCODE = '".$sale_code."'
+and p.Price <> 0 
+order by s.SaleClassCode, l.PriceLevel";
+		$res = $this->fetch($sql,array(),$this->_async,$cache);
+	}
 }

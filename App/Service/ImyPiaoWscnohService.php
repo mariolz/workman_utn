@@ -825,4 +825,202 @@ class ImyPiaoWscnohService {
 		//print_r($data);
 		return $this->DeleteRows($data);
 	}
+	function CreateOrderAndBooking4($node_code,$p_code,$s_code,$seatl_code,$sale_code,$rec_total_code,$m_code,$c_type,$c_name,$sex,$tel_code,$ship_way,$ship_addr,$id_type,$id_no,$invo_head,$pay_code,$cg_code) {
+		return $this->GetCreateOrderAndBooking4Condition($node_code,$s_code,$seatl_code,$p_code,$sale_code,$rec_total_code,$cg_code,$invo_head,$pay_code,$c_name,$sex,$ship_addr,$tel_code,$id_type,$id_no);
+	}
+	function GetCreateOrderAndBooking4Condition($node_code,$s_code,$seatl_code,$p_code,$sale_code,$rec_total_code,$cg_code,$invo_head,$pay_code,$c_name,$sex,$ship_addr,$tel_code,$id_type,$id_no) {
+		$cond1        = $this->GetGCOABCondition1($node_code,$s_code,$seatl_code);
+	    $m1           = $this->GetGCOABMethod1($node_code, $p_code, $sale_code,$seatl_code);
+	    $cond3        = $this->GetGCOABCondition3($m1,$rec_total_code);
+	    //print_r($m1);
+	    return $this->processCreateOrderAndBooking4($cond1,$m1,$cond3,$node_code, $p_code, $sale_code,$s_code,$rec_total_code,$cg_code,$invo_head,$pay_code,$c_name,$sex,$ship_addr,$tel_code,$id_type,$id_no,$seatl_code);
+	    
+	}
+	function GetCreateOrderAndBooking4Xml($result_code,$order_code) {
+		return '<?xml version="1.0" encoding="UTF-8"?>
+<UTN_ONLINESALETICKET_DATAPACKET>
+	<METADATA>
+		<CreateOrderAndBooking>
+			<ResultCode Value="0x"'.$result_code.'"/>
+			<OrderCode Value="'.$order_code.'"/>
+		</CreateOrderAndBooking>
+	</METADATA>
+</UTN_ONLINESALETICKET_DATAPACKET>';
+	}
+	function processCreateOrderAndBooking4($cond1,$m1,$cond3,$node_code, $p_code, $sale_code,$s_code,$rec_total_code,$cg_code,$invo_head,$pay_code,$c_name,$sex,$ship_addr,$tel_code,$id_type,$id_no,$seatl_code) {
+		new Load('Lib/','Algorithm');
+		$lib          =new Algorithm();
+		$seats_info   = $lib->getArrByStr('Common',$seatl_code);
+		$result_code  = '4294967295';
+		$total_seat_amount = $cond3['TotalSEATAMOUNT'];
+		//var_dump($cond1);
+		if(!$cond1) {
+			$result_code = 66;
+			$order_code  = '';
+			return $this->GetCreateOrderAndBooking4Xml($result_code,$order_code);
+			//return false;
+		}
+		if(empty($m1)) {
+			$result_code = 65;
+			$order_code  = '';
+			return $this->GetCreateOrderAndBooking4Xml($result_code,$order_code);
+			//return false;
+		}
+		if(!$cond3['boolean']){
+			$order_code  = '';
+			return $this->GetCreateOrderAndBooking4Xml($result_code,$order_code);
+	
+		}
+		//if(empty($m1))
+		$member_id    = '-1';
+		$client_type  = '3';
+		new Load('Model/'.DBDRIVER, 'JoinShow');
+		new Load('Model/'.DBDRIVER, 'OrderShow');
+		$join_model   = new JoinShow();
+		$order_model  = new OrderShow();
+		$a_info       = $join_model->GetInfoA($node_code, $p_code, $sale_code);
+		$data7        = $join_model->GetData7InfoByCond($node_code, $p_code, $sale_code);
+		$order_code   = 'test123';
+		$order_code_bar_code = 'test123';
+		$data1 = array('NODECODE'=>$node_code,'ORDERCODE'=>$order_code,'DOMAINCODE'=>'A','PRODUCTCODE'=>$p_code,'BARCODE'=>$order_code_bar_code,'SectionCode'=>$s_code,'SECTIONCODE'=>$s_code,'PRINTTICKET'=>'1','ORDERSTATUS'=>'N','ORDERPASSWORD'=>NULL,'LASTTICKETCODE'=>NULL,'ENDTIME'=>NULL,'SEATCOUNT'=>$total_seat_amount,'RECEIVABLES'=>$rec_total_code,'SYSTEMBOOKING'=>'N','CREATENODE'=>$node_code,'CREATEGROUP'=>$cg_code,'CREATEUSER'=>UserCode,'CREATETIME'=>"cast('now' as timestamp)",'TERMINALCODE'=>TerminalCode,'DISCOUNTMENDER'=>NULL,'DISCOUNTCHANGETIME'=>NULL,'PAYEENODE'=>NULL,'PAYEEGROUP'=>NULL,'PAYEE'=>NULL,'GATHERINGTIME'=>NULL,'GATHERINGPLACE'=>NULL,'ISPLACERESERVE'=>'N','ISGIFT'=>'N','ISPRINTPRICE'=>$data7['ISPRINTED'],'SALECLASSCODE'=>$sale_code,'ISSUITE'=>$a_info[0]['ISSUITE'],'ORDERFROM'=>'3','CLIENTTYPE'=>$client_type,'MEMBERID'=>$member_id,'INVOICEHEAD'=>$invo_head,'FETCHWAY'=>$ship_way,'PAYMODECODE'=>$pay_code);
+		$data2 = array('NODECODE'=>$node_code,'ORDERCODE'=>$order_code,'PRODUCTCODE'=>$p_code,'CNAME'=>$c_name,'SEX'=>$sex,'CADDRESS'=>$ship_addr,'TEL'=>$tel_code,'IDENTTYPEID'=>$id_type,'IDENTCODE'=>$id_no,'SALESORT'=>'01');
+		$data3 = array('columns_insert'=>'NODECODE, 
+ORDERCODE, PRICELEVEL, PRINTORIGINAL, TICKETPRICE, DISCOUNT, SEATAMOUNT, 
+PRICE, TOTALPRICE','columns_select'=>'`'.$node_code.'`,`'.$order_code.'`','cond'=>"NODECODE = '".$node_code."' 
+and SALECLASSCODE = '".$sale_code."' and PRODUCTCODE = '".$p_code."'");
+		$result_code  = $order_model->InsertInfoByCond($m1,$data1,$data2,$data3,$seats_info);
+	    return $this->GetCreateOrderAndBooking4Xml($result_code,$order_code);
+	}
+	function GetGCOABCondition3($data,$rec_total_code) {
+		$cal_total_prices = 0;
+		$cal_total_seat_amount = 0;
+		$arr              = array();
+		foreach($data as $k=>$v) {
+			$cal_total_prices += $v['TOTALPRICE'];
+			$cal_total_seat_amount += $v['SEATAMOUNT'];
+		}
+		if(floatval($rec_total_code) - floatval($cal_total_prices) <=0.01) {
+			$arr['boolean'] = true;
+			$arr['TotalSEATAMOUNT'] = $cal_total_seat_amount;
+			return $arr;
+		} else {
+			$arr['boolean'] = false;
+			$arr['TotalSEATAMOUNT'] = 0;
+			return $arr;
+		}
+	}
+	function SelfRound($data,$flag) {
+
+		if(1 == $flag) {
+			return round($data);
+		} else if(2 == $flag) {
+			return intval($data);
+		} else {
+			return round($result,2);
+		}
+	}
+	function GetGCOABMethod1($node_code, $p_code, $sale_code,$seatl_code) {
+		new Load('Model/'.DBDRIVER,'JoinShow');
+		new Load('Model/'.DBDRIVER,'PriceShow');
+		new Load('Model/'.DBDRIVER, 'SysInfoShow');
+		$sys_model = new SysInfoShow();
+		$where = array('cond'=>array('CUSTOMMODULE'=>'POSTTICKETPRICE_SORT'));
+		$data5 = $sys_model->GetInfoByCond('*',$where);
+		$flag  = isset($data5['ISVALID'])?intval($data5['ISVALID']):0;
+		new Load('Lib/','Algorithm');
+		$lib                 = new Algorithm();
+		$price_mode          = new PriceShow();
+		$model               = new JoinShow();
+		$where               = array('cond'=>array('NodeCode'=>$node_code,'ProductCode'=>$p_code));
+		$a_info              = $model->GetInfoA($node_code, $p_code, $sale_code);
+		$price               = $price_mode->GetAllInfoByCond('PRICELEVEL, PRICE',$where);
+		$result              = $lib->getArrByStr('Common',$seatl_code);
+		$c                   = array();
+		$result1             = array();
+		foreach($result as $k=>$v) {
+			$cc = 0;
+			foreach($v as $kk=>$vv) {
+				$seat_info      = explode(',',$vv);
+				$cc         += count($seat_info);
+			}
+			$c[$k]                            = $cc;
+			$result1[$k]['PRICELEVEL']        = $k;
+			$result1[$k]['SEATAMOUNT']        = $c[$k];
+			$result1[$k]['TOTALPRICE']        = number_format(0,1);                  
+			foreach($a_info as $kk=>$vv) {
+				if($vv['SALECLASSTPYE'] == 'T') {
+					$l_sale_class_value = $vv['SALECLASSVALUE'];
+					$n                  = $c[$k] / intval($v['TICKETNUM']);
+					$result1[$k]['TOTALPRICE']        += $l_sale_class_value;
+
+				} else if($vv['SALECLASSTPYE'] == 'D') {
+					$l_sale_class_value = $vv['SALECLASSVALUE'];
+					$l_seat_amount      = $c[$k];
+					foreach ($price as $kk=>$vv) {
+						if($vv['PRICELEVEL'] == $k) {
+							$price2     = $vv['PRICE'];
+							break 1;
+						}
+					}
+					$val                = floatval($vv['SALECLASSVALUE'])/100*$price2;
+					
+					$self_val           = $this->SelfRound($val,$flag);
+					$result1[$k]['TOTALPRICE']        += $self_val*$l_seat_amount;  
+				} else if($vv['SALECLASSTPYE'] == 'G') {
+					foreach ($price as $kk=>$vv) {
+						if($vv['PRICELEVEL'] == $k) {
+							$price2     = $vv['PRICE'];
+							break 1;
+						}
+					}
+					$l_sale_class_value = $vv['SALECLASSVALUE'];
+					$l_seat_amount      = $c[$k];
+					$val                = intval($l_sale_class_value)+$vv['TICKETNUM'];
+					$n                  = $l_seat_amount/$val;
+					$result1[$k]['TOTALPRICE']        += $vv['TICKETNUM']*$price2*$n;
+				} 
+			}
+			foreach($price as $kk=>$vv) {
+				if($vv['PRICELEVEL'] == $k) {
+					$prices = floatval($vv['PRICE']);
+				} else {
+					$prices = 0;
+				}
+				$val = ($result1[$k]['TOTALPRICE']*100)/($result1[$k]['SEATAMOUNT']*$prices);
+				$result1[$k]['DISCOUNT'] = round($val);
+				foreach($a_info as $a=>$b) {
+					if($b['SALECLASSTPYE'] == 'G') {
+						$result1[$k]['TICKETPRICE'] = $vv['PRICE'];
+					} else {
+						$vals = $vv['TOTALPRICE']/$vv['SEATAMOUNT'];
+						$result1[$k]['TICKETPRICE'] = round($vals,2);
+					}
+				}
+			}
+		}
+        return $result1;
+	}
+	function GetGCOABCondition1($node_code,$s_code,$seatl_code) {
+		$data1        = array();
+		$this->lib    = new Load('Lib/','Algorithm');
+		new Load('Model/'.DBDRIVER,'SeatShow');
+		$this->lib    = new Algorithm();
+		$model        = new SeatShow();
+		$return       = false;
+		//$seatl_code          = '8-A|2-A|1-B|5-B|3-A|3-B|2-B|1-A|5-A|6-A';
+		$result       = $this->lib->getArrByStr('Common',$seatl_code);
+		//print_r($result);
+		foreach($result as $k=>$v) {
+			foreach($v as $kk=>$vv) {
+				$seat_info      = explode(',',$vv);
+				$c              = count($seat_info)-1;
+				$seat_min       = $seat_info[0];
+				$seat_max       = $seat_info[$c];
+				$seat_level     = $k;
+				$return = $model->GetSeatInfoByCond($node_code,$s_code,$seat_min,$seat_max,$seat_level, $this->cache);
+			}
+		}
+		return $return;
+		
+	}
 }

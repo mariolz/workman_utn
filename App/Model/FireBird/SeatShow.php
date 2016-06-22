@@ -70,4 +70,25 @@ class SeatShow extends \Db{
 		$sql = "SELECT SEATCODE,PRICELEVEL FROM UTN_SEAT_SHOW WHERE ORDERCODE = '".$order_id."'";
 		return $this->fetchAll($sql,array(),false,$cache);
 	}
+	function GetSeatInfoByCond($node_code,$s_code,$seat_min,$seat_max,$seat_level, $cache=false) {
+		$sql = "SELECT SEATCODE, PRICELEVEL, KIND, STATUS FROM UTN_SEAT_SHOW 
+WHERE NODECODE = '".$node_code."' and (SEATCODE >= ".$seat_min." and SEATCODE <=".$seat_max.") and 
+SECTIONCODE = '".$s_code."' and PRICELEVEL = '".$seat_level."'";
+		$res = $this->fetchAll($sql,array(),$this->_async,$cache);
+		$result = false;
+		foreach($res as $k=>$v) {
+			$result = false;
+			if($v['STATUS'] == 'F' && ($v['KIND'] == 'N' || $v['STATUS'] == 'W' || $v['STATUS'] == 'H' )) {
+				$result = true;
+			} else {
+				if($v['STATUS'] == 'F' && ($v['KIND'] == 'N' || $v['STATUS'] == 'W' )) {
+					$result = true;
+				}
+			}
+			if(!$result) {
+				break;
+			}
+		}
+		return $result;
+	}
 }
