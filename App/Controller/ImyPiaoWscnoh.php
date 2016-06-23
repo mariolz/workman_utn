@@ -14,7 +14,6 @@ class ImyPiaoWscnoh {
 		$service_class      = $this->_class_name.'Service';
 		$this->_service     = new $service_class;
 	}
-	function index() {}
 	function GetProducts() {
 		$this->model = new Load('Model/'.DBDRIVER,'Products');
 		$node_code    = $this->_filter->post('NodeCode');
