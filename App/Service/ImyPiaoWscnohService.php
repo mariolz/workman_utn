@@ -880,7 +880,7 @@ class ImyPiaoWscnohService {
 		$order_model  = new OrderShow();
 		$a_info       = $join_model->GetInfoA($node_code, $p_code, $sale_code);
 		$data7        = $join_model->GetData7InfoByCond($node_code, $p_code, $sale_code);
-		$order_code   = 'test123';
+		$order_code   = $this->GetOrderCode($s_code,$lib);
 		$order_code_bar_code = 'test123';
 		$data1 = array('NODECODE'=>$node_code,'ORDERCODE'=>$order_code,'DOMAINCODE'=>'A','PRODUCTCODE'=>$p_code,'BARCODE'=>$order_code_bar_code,'SectionCode'=>$s_code,'SECTIONCODE'=>$s_code,'PRINTTICKET'=>'1','ORDERSTATUS'=>'N','ORDERPASSWORD'=>NULL,'LASTTICKETCODE'=>NULL,'ENDTIME'=>NULL,'SEATCOUNT'=>$total_seat_amount,'RECEIVABLES'=>$rec_total_code,'SYSTEMBOOKING'=>'N','CREATENODE'=>$node_code,'CREATEGROUP'=>$cg_code,'CREATEUSER'=>UserCode,'CREATETIME'=>"cast('now' as timestamp)",'TERMINALCODE'=>TerminalCode,'DISCOUNTMENDER'=>NULL,'DISCOUNTCHANGETIME'=>NULL,'PAYEENODE'=>NULL,'PAYEEGROUP'=>NULL,'PAYEE'=>NULL,'GATHERINGTIME'=>NULL,'GATHERINGPLACE'=>NULL,'ISPLACERESERVE'=>'N','ISGIFT'=>'N','ISPRINTPRICE'=>$data7['ISPRINTED'],'SALECLASSCODE'=>$sale_code,'ISSUITE'=>$a_info[0]['ISSUITE'],'ORDERFROM'=>'3','CLIENTTYPE'=>$client_type,'MEMBERID'=>$member_id,'INVOICEHEAD'=>$invo_head,'FETCHWAY'=>$ship_way,'PAYMODECODE'=>$pay_code);
 		$data2 = array('NODECODE'=>$node_code,'ORDERCODE'=>$order_code,'PRODUCTCODE'=>$p_code,'CNAME'=>$c_name,'SEX'=>$sex,'CADDRESS'=>$ship_addr,'TEL'=>$tel_code,'IDENTTYPEID'=>$id_type,'IDENTCODE'=>$id_no,'SALESORT'=>'01');
@@ -1022,5 +1022,19 @@ and SALECLASSCODE = '".$sale_code."' and PRODUCTCODE = '".$p_code."'");
 		}
 		return $return;
 		
+	}
+	function GetOrderCode($s_code,$model) {
+		new Load('Model/'.DBDRIVER, 'Systems');
+		$order_model = new Systems(); 
+		$ldb_code    = $model->GetDBCode('TypeConvert',$s_code);
+		$result      = $order_model->GetInfoByCond('GEN_ID(GENE_ORDER_CODE,1)');
+	    //print_r($ldb_code);
+		$lpk_id      = $result['GEN_ID'];
+		return $this->GeneratePKID($ldb_code,$lpk_id,$model);
+	}
+	function GeneratePKID($ldb_code,$new_id,$model) {
+		$value = intval($ldb_code)<<32 + intval($new_id);
+		//var_dump($value);
+		return $model->Int64ToBase32('TypeConvert',$value,8);
 	}
 }

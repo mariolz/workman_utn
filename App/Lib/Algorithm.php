@@ -20,7 +20,7 @@ class Algorithm {
     		require_once APPPATH.'Lib/Algorithm/'.$args[0].'.php';
     		$this->obj    = new $args[0];
     		$this->method = $name;
-    		return call_user_func_array(array($this->obj,$this->method), array($args[1]));
+    		return call_user_func_array(array($this->obj,$this->method), array($args));
     	} else {
     		echo "the class is not exists!!!";
     	}

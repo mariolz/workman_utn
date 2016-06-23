@@ -254,6 +254,6 @@ class ImyPiaoWscnoh {
     	$str      = 'B0A';
     	new Load('Lib/','Algorithm');
     	$a        = new Algorithm();
-    	$a->GetDBCode('Common',$str);
+    	$this->_service->GetOrderCode('00000AT7',$a);
     }
 }

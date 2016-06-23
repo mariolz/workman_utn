@@ -19,7 +19,7 @@ class Common {
      * @param int $bottom 坐标值 $top+31
      */
     function getCoorDinate($param) {
-        $result        = explode('|',$param);
+        $result        = explode('|',$param[1]);
         $arr['top']    = $result[0];
         $arr['left']   = $result[1];
         $arr['right']  = $arr['left']+$result[3];
@@ -36,7 +36,7 @@ class Common {
      * 获取不连续的一串数，连续组的成一组
      */
     function getArrByStr($str) {
-    	$arr  = explode('|',$str);
+    	$arr  = explode('|',$str[1]);
     	$res  = array();
     	$fres = array();
     	foreach($arr as $k=>$v) {
@@ -70,48 +70,5 @@ class Common {
     	$str1 = substr($str1,0,-1);
     	$arr         = explode('|', $str1);
     	return $arr;
-    }
-    function Base32ToInt64($str,$base) {
-    	
-    	$c       = strlen($str);
-    	$tmp_val = 0;
-    	
-    	for($i=0;$i<$c;$i++) {
-    		$pos     = strpos($base, $str[$i]);
-    		if($pos !== false) {
-    			$tmp_val = $tmp_val*32+$pos-1;
-    			
-    		}
-    	}
-    	return $tmp_val;
-    }
-    function Int64ToBase32($val,$digits) {
-    	$div       = $val;
-    	$base      = BASE32_DIGITS;
-    	$str       = '';
-    	$remainder = 0;
-    	$len       = 0;
-    	while($div > 0) {
-    		$remainder = $div % 32;
-    		$div       =  intval($div/32);
-    		$str      +=   $base[$remainder+1];
-    	}  
-    	$len       = strlen($str);
-    	if($len < $digits) {
-    		$f = $digits - $len;
-    		$str .= str_repeat('0',$f );
-    		return strrev($str);
-    	}
-    	return $str;
-    }
-    function GetDBCode($str) {
-    	try{
-    		$res = $this->Base32ToInt64($str,BASE32_DIGITS);
-    		return strval($res>>32);
-    		
-    	}catch (Exception $e) {
-    		return '';
-    	}
-    	
     }
 }
